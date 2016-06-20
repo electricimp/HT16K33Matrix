@@ -2,14 +2,14 @@ class HT16K33Matrix {
     // Squirrel class for 1.2-inch 8x8 LED matrix displays driven by the HT16K33 controller
     // For example: http://www.adafruit.com/products/1854
     // Communicates with any imp I2C bus
- 
+
     // Availibility: Device
 
     // Written by Tony Smith (@smittytone) October 2014
     // Copyright 2014-2016 Electric Imp
     // Issued under the MIT license (MIT)
 
-    static VERSION = [1,0,1];
+    static VERSION = [1,1,0];
 
     // HT16K33 registers and HT16K33-specific variables
     static HT16K33_REGISTER_DISPLAY_ON  = "\x81"
@@ -129,7 +129,7 @@ class HT16K33Matrix {
     _inverseVideoFlag = false;
 
     constructor(impI2Cbus = null, i2cAddress = 0x70) {
-        
+
         // Parameters:
         // 1. Whichever configured imp I2C bus is to be used for the HT16K33
         // 2. The HT16K33's I2C address (default: 0x70)
@@ -161,7 +161,7 @@ class HT16K33Matrix {
 
         if (angle != 0) _rotateFlag = true;
         _rotationAngle = angle;
-        
+
         // Set the brightness (which of necessity wipes and power cyles the dispay)
         setBrightness(brightness);
     }
@@ -171,7 +171,7 @@ class HT16K33Matrix {
         if (brightness > 15) brightness = 15;
         if (brightness < 0) brightness = 0;
         brightness = brightness + 224;
-        
+
         // Wipe the display completely first, so preserve what's in _buffer
 
         local sbuffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
@@ -181,19 +181,19 @@ class HT16K33Matrix {
 
         // Clear the LED matrix
         clearDisplay();
-        
+
         // Power cycle the LED matrix
         powerDown();
         powerUp();
-        
+
         // Write the new brightness value to the HT16K33
         _led.write(_ledAddress, brightness.tochar() + "\x00");
-        
+
         // Restore what's was in the _buffer...
         for (local i = 0 ; i < 8 ; ++i) {
             _buffer[i] = sbuffer[i];
         }
-        
+
         // ... and write it back to the LED matrix
         _writeDisplay();
     }
@@ -222,12 +222,14 @@ class HT16K33Matrix {
     }
 
     function displayIcon(glyphMatrix) {
-        // Parameter: Array of 8 8-bit values defining a pixel image
-        
-        if (glyphMatrix == null || typeof glyphMatrix != "array" || glyphMatrix.len() == 0) return;
+        // Parameter: Array of 1-8 8-bit values defining a pixel image
+        // The data is passed as columns
+
+        if (glyphMatrix == null || typeof glyphMatrix != "array") return;
+        if (glyphMatrix.len() < 1 || glyphMatrix.len() > 8) return;
         if (_rotateFlag) glyphMatrix = _rotateMatrix(glyphMatrix, _rotationAngle);
-        
-        for (local i = 0 ; i < 8 ; ++i) {
+        _buffer[i] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        for (local i = 0 ; i < glyphMatrix.len() ; ++i) {
             if (_inverseVideoFlag) {
                 _buffer[i] = ~glyphMatrix[i];
             } else {
@@ -240,12 +242,13 @@ class HT16K33Matrix {
 
     function displayChar(asciiValue = 32) {
         // Parameter: Character as an Ascii value (default: 32 [space])
-        
+
         asciiValue = asciiValue - 32;
         if (asciiValue < 0 || asciiValue > _alphaCount) asciiValue = 0;
         local inputMatrix = clone(charset[asciiValue]);
         if (_rotateFlag) inputMatrix = _rotateMatrix(inputMatrix, _rotationAngle);
-        for (local i = 0 ; i < 8 ; ++i) {
+        _buffer[i] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        for (local i = 0 ; i < glyphMatrix.len() ; ++i) {
             if (_inverseVideoFlag) {
                 _buffer[i] = ~inputMatrix[i];
             }
@@ -259,7 +262,7 @@ class HT16K33Matrix {
 
     function displayLine(line) {
         // Bit-scroll through the characters in the variable ‘line’
-        
+
         if (line == null || line == "") return;
         foreach (index, character in line) {
             local glyph = clone(pcharset[character - 32]);
@@ -377,13 +380,13 @@ class HT16K33Matrix {
 
     function _processByte(byteValue) {
         // Adafruit 8x8 matrix requires some data manipulation:
-        // Bits 7-0 of each line need to be sent 0 through 7, 
+        // Bits 7-0 of each line need to be sent 0 through 7,
         // and bit 0 rotate to bit 7
-        
+
         local result = 0;
         local a = 0;
         for (local i = 0 ; i < 8 ; ++i) {
-            // Run through each bit in byteValue and set the 
+            // Run through each bit in byteValue and set the
             // opposite bit in result accordingly, ie. bit 0 -> bit 7,
             // bit 1 -> bit 6, etc.
             a = byteValue & (1 << i);
@@ -392,10 +395,10 @@ class HT16K33Matrix {
 
         // Get bit 0 of result
         result & 0x01;
-        
+
         // Shift result bits one bit to right
         result = result >> 1;
-        
+
         // if old bit 0 is set, set new bit 7
         if (a > 0) result = result + 0x80;
         return result;
