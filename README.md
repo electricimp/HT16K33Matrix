@@ -6,7 +6,7 @@ Hardware driver for [Adafruit 1.2-inch monochrome LED matrix display](http://www
 
 The class incorporates its own Ascii character set, from 32 (&nbsp;) to 127 (&deg;). This character set is now proportionally spaced for a more aesthectically pleasing output. Code built using version 1.0.0 should be checked, especially if you are assuming non-proportionally spaced characters. Ascii code 127 is now a degrees sign, not a copyright symbol.
 
-The class’ API remains unchanged. However, the optional angle passed into the second parameter of *init()* may now be a value in degrees.
+The class’ API remains almost unchanged. The optional angle passed into the second parameter of *init()* may now be a value in degrees, but this will not cause problems for existing code. However, *displayIcon()* now takes an array of 1-8 8-bit values, each specifying a *column* (bit 7 at the top) of the character, not a row.
 
 ## Class Usage
 
