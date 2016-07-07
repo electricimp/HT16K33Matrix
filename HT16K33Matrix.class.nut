@@ -20,7 +20,7 @@ class HT16K33Matrix {
     static HT16K33_I2C_ADDRESS          = 0x70
 
     // Proportionally space character set
-    static pcharset = [
+    static _pcharset = [
     [0x00, 0x00],                   // space - Ascii 32
     [0xfa],                         // !
     [0xc0, 0x00, 0xc0],             // "
@@ -122,6 +122,7 @@ class HT16K33Matrix {
     // Class private properties
     _buffer = null;
     _led = null;
+    _defchars = null;
 
     _ledAddress = 0;
     _alphaCount = 96;
@@ -148,6 +149,7 @@ class HT16K33Matrix {
         _led = impI2Cbus;
         _ledAddress = i2cAddress << 1;
         _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        _defchars = array(32, -1);
         _debug = debug;
     }
 
@@ -176,7 +178,7 @@ class HT16K33Matrix {
         if (angle != 0) {
             _rotateFlag = true;
         } else {
-            _rotageFlag = false;
+            _rotateFlag = false;
         }
 
         _rotationAngle = angle;
@@ -234,7 +236,6 @@ class HT16K33Matrix {
 
         // Parameters:
         //  1. Boolean: whether inverse video is set (true) or unset (false)
-        //
         // Returns: Nothing
 
         if (typeof state != "bool") state = true;
@@ -259,7 +260,6 @@ class HT16K33Matrix {
         //     The data is passed as columns
         //  2. Boolean indicating whether the icon should be displayed
         //     centred on the screen
-        //
         // Returns: nothing
 
         if (glyphMatrix == null || typeof glyphMatrix != "array") {
@@ -272,7 +272,6 @@ class HT16K33Matrix {
             return;
         }
 
-        if (_rotateFlag) glyphMatrix = _rotateMatrix(glyphMatrix, _rotationAngle);
         _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
         for (local i = 0 ; i < glyphMatrix.len() ; ++i) {
@@ -286,30 +285,39 @@ class HT16K33Matrix {
             }
         }
 
+        if (_rotateFlag) _buffer = _rotateMatrix(_buffer, _rotationAngle);
         _writeDisplay();
     }
 
-    function displayChar(asciiValue = 32) {
+    function displayChar(asciiValue = 32, center = false) {
         // Display a single character specified by its Ascii value
         // Parameters:
         //  1. Character Ascii code (default: 32 [space])
-        //
         // Returns: nothing
 
-        asciiValue = asciiValue - 32;
-        if (asciiValue < 0 || asciiValue > _alphaCount) asciiValue = 0;
-        local inputMatrix = clone(charset[asciiValue]);
-        if (_rotateFlag) inputMatrix = _rotateMatrix(inputMatrix, _rotationAngle);
-        _buffer[i] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        for (local i = 0 ; i < glyphMatrix.len() ; ++i) {
+        local inputMatrix;
+        if (asciiValue < 32) {
+             inputMatrix = clone(_defchars[asciiValue]);
+        } else {
+            asciiValue = asciiValue - 32;
+            if (asciiValue < 0 || asciiValue > _alphaCount) asciiValue = 0;
+            inputMatrix = clone(_pcharset[asciiValue]);
+        }
+
+        _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+        for (local i = 0 ; i < inputMatrix.len() ; ++i) {
+            local a = i;
+            if (center) a = i + ((8 - inputMatrix.len()) / 2).tointeger();
+
             if (_inverseVideoFlag) {
-                _buffer[i] = ~inputMatrix[i];
-            }
-            else {
-                _buffer[i] = inputMatrix[i];
+                _buffer[a] = _flip(~inputMatrix[i]);
+            } else {
+                _buffer[a] = _flip(inputMatrix[i]);
             }
         }
 
+        if (_rotateFlag) _buffer = _rotateMatrix(_buffer, _rotationAngle);
         _writeDisplay();
     }
 
@@ -317,7 +325,6 @@ class HT16K33Matrix {
         // Bit-scroll through the characters in the variable ‘line’
         // Parameters:
         //  1. String of text
-        //
         // Returns: nothing
 
         if (line == null || line == "") {
@@ -326,7 +333,17 @@ class HT16K33Matrix {
         }
 
         foreach (index, character in line) {
-            local glyph = clone(pcharset[character - 32]);
+            local glyph;
+            if (character < 32) {
+                if (_defchars[character] == -1 || (typeof _defchars[character] != "array")) {
+                    if (_debug) server.log("Use of undefined character (" + character + ") in HT16K33Matrix.displayLine()");
+                    glyph = clone(_pcharset[0]);
+                } else {
+                    glyph = clone(_defchars[character]);
+                }
+            } else {
+                glyph = clone(_pcharset[character - 32]);
+            }
 
             // Add an empty spacer column to the character matrix
             glyph.append(0x00);
@@ -342,8 +359,17 @@ class HT16K33Matrix {
                         ++cursor;
                     } else {
                         if (index + increment < line.len()) {
-                            glyphToDraw = clone(pcharset[line[index + increment] - 32]);
-                            glyphToDraw.append(0x00);
+                            if (line[index + increment] < 32) {
+                                if (_defchars[line[index + increment]] == -1 || (typeof _defchars[line[index + increment]] != "array")) {
+                                    if (_debug) server.log("Use of undefined character (" + line[index + increment] + ") in HT16K33Matrix.displayLine()");
+                                    glyphToDraw = clone(_pcharset[0]);
+                                } else {
+                                    glyphToDraw = clone(_defchars[line[index + increment]]);
+                                }
+                            } else {
+                                glyphToDraw = clone(_pcharset[line[index + increment] - 32]);
+                                glyphToDraw.append(0x00);
+                            }
                             ++increment;
                             cursor = 1;
                             outputFrame[k] = _flip(glyphToDraw[0]);
@@ -370,6 +396,39 @@ class HT16K33Matrix {
                 _writeDisplay();
             }
         }
+    }
+
+    function defineChar(asciiCode = 0, glyphMatrix = null) {
+        // Set a user-definable char for later use
+        // Parameters:
+        //  1. Character Ascii code 0-31 (default: 0)
+        //  2. Array of 1-8 8-bit values defining a pixel image
+        //     The data is passed as columns
+        // Returns: nothing
+
+        if (glyphMatrix == null || typeof glyphMatrix != "array") {
+            if (_debug) server.error("HT16K33Matrix.defineChar() passed undefined icon array");
+            return;
+        }
+
+        if (glyphMatrix.len() < 1 || glyphMatrix.len() > 8) {
+            if (_debug) server.error("HT16K33Matrix.defineChar() passed incorrectly sized icon array");
+            return;
+        }
+
+        if (asciiCode < 0 || asciiCode > 31) {
+            if (_debug) server.error("HT16K33Matrix.defineChar() passed an incorrect character code");
+            return;
+        }
+
+        if (_defchars[asciiCode] != -1 && _debug) server.log("Character " + asciiCode + " already defined so redefining it");
+
+        local matrix = [];
+        for (local i = 0 ; i < glyphMatrix.len() ; ++i) {
+            matrix.append(_flip(glyphMatrix[i]));
+        }
+
+        _defchars.insert(asciiCode, matrix);
     }
 
     // ****** PRIVATE FUNCTIONS - DO NOT CALL ******
