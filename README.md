@@ -6,6 +6,8 @@ Hardware driver for [Adafruit 1.2-inch monochrome LED matrix display](http://www
 
 The class incorporates its own Ascii character set, from 32 (&nbsp;) to 127 (&deg;). This character set is now proportionally spaced for a more aesthectically pleasing output. Code built using version 1.0.0 should be checked, especially if you are assuming non-proportionally spaced characters. Ascii code 127 is now a degrees sign, not a copyright symbol.
 
+The class also supports up to 32 user-definable characters.
+
 The class’ API remains almost unchanged. The optional angle passed into the second parameter of *init()* may now be a value in degrees, but this will not cause problems for existing code. However, *displayIcon()* now takes an array of 1-8 8-bit values, each specifying a *column* (bit 7 at the top) of the character, not a row.
 
 ## Class Usage
@@ -46,7 +48,7 @@ led.init(15, 2);
 led.init(8, -90);
 ```
 
-## displayChar(*[asciiValue]*)
+## displayChar(*asciiValue[, center]*)
 
 Call *displayChar()* to write an Ascii character to the matrix. The value is optional; if no value is specified, the display will be set to display a space character. Unless the matrix is set to inverse video mode, this has the same effect as *clearDisplay()*.
 
@@ -56,20 +58,22 @@ Call *displayChar()* to write an Ascii character to the matrix. The value is opt
 led.displayChar(65);
 ```
 
-## displayIcon(*glyphMatrix*)
+## displayIcon(*glyphMatrix[, center]*)
 
-Call *displayIcon()* to write an non-standard character or graphic to the matrix. The character is passed as an array containing 1 - 8 integer values, each a bit pattern for the *column(s)* making up the character, from top to bottom (ie. bit 7 is the topmost pixel of the column, bit 0 is the bottom pixel of the column).
+Call *displayIcon()* to write an non-standard character or graphic to the matrix. The character is passed as an array containing one to eight 8-bit integer values, each value a bit pattern for one of the *columns* making up the character. Each column value’s bits are set or unset according to the diagram below, ie. bit 0 is the topmost pixel of the column and bit 7 is the lowest pixel of the column.
 
 ![Glyph Matrix](./glyph.png)
 
-The graphic above shows a custom character. It’s formed from five 8-bit values, each representing one of the five columns that make up the character. These five values, shown below each column, would form the array passed into *displayIcon()*.
+The custom character shown above is formed from five 8-bit values, each representing one of the five columns that make up the character. These five values, shown below each column, form the array passed into *displayIcon()*.
 
 If no array is passed, or an empty or incomplete array is passed, the function returns with no effect.
+
+If `true` is passed into the optional parameter *center*, the glyph will be centered on the matrix.
 
 ```squirrel
 // Display a smiley on the matrix
 
-local smiley = [0x3C, 0x42, 0xA5, 0x81, 0xA5, 0x99, 0x42, 0x3C];
+local smiley = [0x3C, 0x42, 0x95, 0xA1, 0xA1, 0x95, 0x42, 0x3C];
 led.displayIcon(smiley);
 ```
 
@@ -82,6 +86,23 @@ Call *displayLine()* to write a string to the matrix. The characters (one or mor
 
 local text = "The quick brown fox jumped over the lazy dog";
 led.displayline(text);
+```
+
+## defineChar(*asciiCode, glyphMatrix*)
+
+You can save user-defined characters for future use using *defineChar()*. The first parameter is a numeric code to identify the character: permitted values are 0 through 31.
+
+The *glyphMatrix* parameter takes an array containing one to eight 8-bit integer values, each value a bit pattern for one of the *columns* making up the character. Each column value’s bits are set or unset according to the diagram below, ie. bit 0 is the topmost pixel of the column and bit 7 is the lowest pixel of the column. See *displayIcon()*, above, for further guidance on forming new characters.
+
+Once defined a user-defined character can be presented using *displayChar()* passing in its character code as the *asciiValue* parameter. You can add your characters to a string to be presented by *displayLine()* by adding it as a single-character string:
+
+```
+local smiley = [0x3C, 0x42, 0x95, 0xA1, 0xA1, 0x95, 0x42, 0x3C];
+local smileyChar = 0;
+led.defineChar(smileyChar, smiley);
+
+local displayString = "I'm being chased by a...     + smileyChar.tochar() + "    !!!";
+led.displayLine(displayString);
 ```
 
 ## clearDisplay()
