@@ -1,8 +1,8 @@
 class HT16K33Matrix {
     // Squirrel class for 1.2-inch 8x8 LED matrix displays driven by the HT16K33 controller
     // For example: http://www.adafruit.com/products/1854
-    // Communicates with any imp I2C bus
 
+    // Bus: I2C
     // Availibility: Device
 
     // Written by Tony Smith (@smittytone) October 2014
@@ -122,17 +122,23 @@ class HT16K33Matrix {
     // Class private properties
     _buffer = null;
     _led = null;
+
     _ledAddress = 0;
     _alphaCount = 96;
     _rotationAngle = 0;
     _rotateFlag = false;
     _inverseVideoFlag = false;
+    _debug = false;
 
-    constructor(impI2Cbus = null, i2cAddress = 0x70) {
+    constructor(impI2Cbus = null, i2cAddress = 0x70, debug = false) {
 
         // Parameters:
-        // 1. Whichever configured imp I2C bus is to be used for the HT16K33
-        // 2. The HT16K33's I2C address (default: 0x70)
+        //  1. Whichever configured imp I2C bus is to be used for the HT16K33
+        //  2. The HT16K33's I2C address (default: 0x70)
+        //  3. Boolean - set/unset to log/silence error messages
+        //
+        // Returns:
+        //  HT16K33Matrix instance, or null on error
 
         if (impI2Cbus == null) {
             throw "HT16K33MatrixPro requires a non-null imp I2C object";
@@ -142,10 +148,18 @@ class HT16K33Matrix {
         _led = impI2Cbus;
         _ledAddress = i2cAddress << 1;
         _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        _debug = debug;
     }
 
     function init(brightness = 15, angle = 0) {
-        // Angle range can be -360 to + 360 - squash values beyond this
+
+        // Parameters:
+        //  1. Display brightness, 1-15 (default: 15)
+        //  2. Display auto-rotation angle, 0 to -360 degrees (default: 0)
+        //
+        // Returns: Nothing
+
+        // Angle range can be -360 to + 360 - ignore values beyond this
         if (angle < -360 || angle > 360) angle = 0;
 
         // Convert angle in degrees to internal value:
@@ -159,21 +173,30 @@ class HT16K33Matrix {
             if (angle >= 225) angle = 3
         }
 
-        if (angle != 0) _rotateFlag = true;
+        if (angle != 0) {
+            _rotateFlag = true;
+        } else {
+            _rotageFlag = false;
+        }
+
         _rotationAngle = angle;
 
-        // Set the brightness (which of necessity wipes and power cyles the dispay)
+        // Set the brightness (which also wipes and power-cycles the display)
         setBrightness(brightness);
     }
 
     function setBrightness(brightness = 15) {
-        // Called when the app changes the brightness (default: 15)
+
+        // Parameters:
+        // 1. Display brightness, 1-15 (default: 15)
+        //
+        // Returns: Nothing
+
         if (brightness > 15) brightness = 15;
         if (brightness < 0) brightness = 0;
         brightness = brightness + 224;
 
-        // Wipe the display completely first, so preserve what's in _buffer
-
+        // Wipe the display completely first, so preserve what's in '_buffer'
         local sbuffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         for (local i = 0 ; i < 8 ; ++i) {
             sbuffer[i] = _buffer[i];
@@ -189,12 +212,33 @@ class HT16K33Matrix {
         // Write the new brightness value to the HT16K33
         _led.write(_ledAddress, brightness.tochar() + "\x00");
 
-        // Restore what's was in the _buffer...
+        // Restore what's was in '_buffer'
         for (local i = 0 ; i < 8 ; ++i) {
             _buffer[i] = sbuffer[i];
         }
 
-        // ... and write it back to the LED matrix
+        // Write buffer contents back to the LED matrix
+        _writeDisplay();
+    }
+
+    function clearDisplay() {
+
+        // Parameters: None
+        // Returns: Nothing
+
+        _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        _writeDisplay();
+    }
+
+    function setInverseVideo(state = true) {
+
+        // Parameters:
+        //  1. Boolean: whether inverse video is set (true) or unset (false)
+        //
+        // Returns: Nothing
+
+        if (typeof state != "bool") state = true;
+        _inverseVideoFlag = state;
         _writeDisplay();
     }
 
@@ -208,32 +252,37 @@ class HT16K33Matrix {
         _led.write(_ledAddress, HT16K33_REGISTER_DISPLAY_ON);
     }
 
-    function setInverseVideo(state = true) {
-        // Set the display to inverse video mode (default: true)
-        if (typeof state != "bool") state = true;
-        _inverseVideoFlag = state;
-        _writeDisplay();
-    }
+    function displayIcon(glyphMatrix, center = false) {
+        // Displays a custom character
+        // Parameters:
+        //  1. Array of 1-8 8-bit values defining a pixel image
+        //     The data is passed as columns
+        //  2. Boolean indicating whether the icon should be displayed
+        //     centred on the screen
+        //
+        // Returns: nothing
 
-    function clearDisplay() {
-        // Clears the _buffer, which is then written to the LED matrix
-        _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-        _writeDisplay();
-    }
+        if (glyphMatrix == null || typeof glyphMatrix != "array") {
+            if (_debug) server.error("HT16K33Matrix.displayIcon() passed undefined icon array");
+            return;
+        }
 
-    function displayIcon(glyphMatrix) {
-        // Parameter: Array of 1-8 8-bit values defining a pixel image
-        // The data is passed as columns
+        if (glyphMatrix.len() < 1 || glyphMatrix.len() > 8) {
+            if (_debug) server.error("HT16K33Matrix.displayIcon() passed incorrectly sized icon array");
+            return;
+        }
 
-        if (glyphMatrix == null || typeof glyphMatrix != "array") return;
-        if (glyphMatrix.len() < 1 || glyphMatrix.len() > 8) return;
         if (_rotateFlag) glyphMatrix = _rotateMatrix(glyphMatrix, _rotationAngle);
-        _buffer[i] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
         for (local i = 0 ; i < glyphMatrix.len() ; ++i) {
+            local a = i;
+            if (center) a = i + ((8 - glyphMatrix.len()) / 2).tointeger();
+
             if (_inverseVideoFlag) {
-                _buffer[i] = ~glyphMatrix[i];
+                _buffer[a] = ~glyphMatrix[i];
             } else {
-                _buffer[i] = glyphMatrix[i];
+                _buffer[a] = glyphMatrix[i];
             }
         }
 
@@ -241,7 +290,11 @@ class HT16K33Matrix {
     }
 
     function displayChar(asciiValue = 32) {
-        // Parameter: Character as an Ascii value (default: 32 [space])
+        // Display a single character specified by its Ascii value
+        // Parameters:
+        //  1. Character Ascii code (default: 32 [space])
+        //
+        // Returns: nothing
 
         asciiValue = asciiValue - 32;
         if (asciiValue < 0 || asciiValue > _alphaCount) asciiValue = 0;
@@ -262,11 +315,22 @@ class HT16K33Matrix {
 
     function displayLine(line) {
         // Bit-scroll through the characters in the variable ‘line’
+        // Parameters:
+        //  1. String of text
+        //
+        // Returns: nothing
 
-        if (line == null || line == "") return;
+        if (line == null || line == "") {
+            if (_debug) server.error("HT16K33Matrix.displayLine() sent a null or zero-length string");
+            return;
+        }
+
         foreach (index, character in line) {
             local glyph = clone(pcharset[character - 32]);
+
+            // Add an empty spacer column to the character matrix
             glyph.append(0x00);
+
             foreach (column, columnValue in glyph) {
                 local cursor = column;
                 local glyphToDraw = glyph;
@@ -295,7 +359,7 @@ class HT16K33Matrix {
                     }
                 }
 
-                // Pause between frames
+                // Pause between frames according to level of rotation
                 if (_rotationAngle == 0) {
                     imp.sleep(0.060);
                 } else {
@@ -315,6 +379,7 @@ class HT16K33Matrix {
         // Uses function processByte() to manipulate regular values to
         // Adafruit 8x8 matrix's format
         local dataString = HT16K33_DISPLAY_ADDRESS;
+
         for (local i = 0 ; i < 8 ; ++i) {
             dataString = dataString + (_processByte(_buffer[i])).tochar() + "\x00";
         }
@@ -323,12 +388,16 @@ class HT16K33Matrix {
     }
 
     function _flip(value) {
+        // Function used to manipulate pre-defined character matrices
+        // ahead of rotation by changing their byte order
         local a = 0;
         local b = 0;
+
         for (local i = 0 ; i < 8 ; ++i) {
             a = value & (1 << i);
             if (a > 0) b = b + (1 << (7 - i));
         }
+
         return b;
     }
 
