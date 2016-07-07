@@ -60,7 +60,7 @@ led.displayChar(65);
 
 Call *displayIcon()* to write an non-standard character or graphic to the matrix. The character is passed as an array containing 1 - 8 integer values, each a bit pattern for the *column(s)* making up the character, from top to bottom (ie. bit 7 is the topmost pixel of the column, bit 0 is the bottom pixel of the column).
 
-![Glyph Matrix](glyph.png "Glyph Matrix")
+![Glyph Matrix](./glyph.png)
 
 The graphic above shows a custom character. It’s formed from five 8-bit values, each representing one of the five columns that make up the character. These five values, shown below each column, would form the array passed into *displayIcon()*.
 
