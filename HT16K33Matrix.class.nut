@@ -240,15 +240,19 @@ class HT16K33Matrix {
 
         if (typeof state != "bool") state = true;
         _inverseVideoFlag = state;
+        if (_debug) server.log(format("Switching the HT16K33 Matrix to %s", (state ? "inverse video" : "normal video")));
         _writeDisplay();
+
     }
 
     function powerDown() {
+        if (_debug) server.log("Turning the HT16K33 Matrix off");
         _led.write(_ledAddress, HT16K33_REGISTER_DISPLAY_OFF);
         _led.write(_ledAddress, HT16K33_REGISTER_SYSTEM_OFF);
     }
 
     function powerUp() {
+        if (_debug) server.log("Turning the HT16K33 Matrix on");
         _led.write(_ledAddress, HT16K33_REGISTER_SYSTEM_ON);
         _led.write(_ledAddress, HT16K33_REGISTER_DISPLAY_ON);
     }
@@ -428,6 +432,7 @@ class HT16K33Matrix {
             matrix.append(_flip(glyphMatrix[i]));
         }
 
+		if (_debug) server.log("Setting user-defined character " + asciiCode);
         _defchars.insert(asciiCode, matrix);
     }
 
