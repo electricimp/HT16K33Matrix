@@ -4,11 +4,9 @@ Hardware driver for [Adafruit 1.2-inch monochrome LED matrix display](http://www
 
 ### Changes from 1.0.0
 
-The class incorporates its own Ascii character set, from 32 (&nbsp;) to 127 (&deg;). This character set is now proportionally spaced for a more aesthectically pleasing output. Code built using version 1.0.0 should be checked, especially if you are assuming non-proportionally spaced characters. Ascii code 127 is now a degrees sign, not a copyright symbol.
-
-The class also supports up to 32 user-definable characters.
-
-The class’ API remains almost unchanged. The optional angle passed into the second parameter of *init()* may now be a value in degrees, but this will not cause problems for existing code. However, *displayIcon()* now takes an array of 1-8 8-bit values, each specifying a *column* (bit 7 at the top) of the character, not a row.
+- The class incorporates its own Ascii character set, from 32 (&nbsp;) to 127 (&deg;). This character set is now proportionally spaced for a more aesthectically pleasing output. Code built using version 1.0.0 should be checked, especially if you are assuming non-proportionally spaced characters. Ascii code 127 is now a degrees sign, not a copyright symbol.
+- The class now supports up to 32 user-definable characters, assigned to the Ascii code values 0 through 31.
+- The optional angle passed into the second parameter of *init()* may now be a value in degrees, but this will not cause problems for existing code. However, *displayIcon()* now takes an array of 1-8 8-bit values, each specifying a *column* (bit 7 at the top) of the character, not a row.
 
 ## Class Usage
 
@@ -21,8 +19,15 @@ The passed imp I&sup2;C bus must be configured **before** the HT16K33Matrix obje
 Optionally, you can pass `true` into the *debug* parameter. This will cause debugging information to be posted to the device log. This is disabled by default.
 
 ```squirrel
+// No debugging
 hardware.i2c89.configure(CLOCK_SPEED_400_KHZ);
 led <- HT16K33Matrix(hardware.i2c89);
+```
+
+```squirrel
+// Debugging
+hardware.i2c89.configure(CLOCK_SPEED_400_KHZ);
+led <- HT16K33Matrix(hardware.i2c89, 0x70, true);
 ```
 
 ## Class Methods
@@ -46,16 +51,6 @@ led.init(15, 2);
 // rotate all characters 90 degrees anticlockwise
 
 led.init(8, -90);
-```
-
-## displayChar(*asciiValue[, center]*)
-
-Call *displayChar()* to write an Ascii character to the matrix. The value is optional; if no value is specified, the display will be set to display a space character. Unless the matrix is set to inverse video mode, this has the same effect as *clearDisplay()*.
-
-```squirrel
-// Set the display to show ‘A’
-
-led.displayChar(65);
 ```
 
 ## displayIcon(*glyphMatrix[, center]*)
@@ -88,6 +83,16 @@ local text = "The quick brown fox jumped over the lazy dog";
 led.displayline(text);
 ```
 
+## displayChar(*asciiValue[, center]*)
+
+Call *displayChar()* to write an Ascii character to the matrix. The value is optional; if no value is specified, the display will be set to display a space character. Unless the matrix is set to inverse video mode, this has the same effect as *clearDisplay()*.
+
+```squirrel
+// Set the display to show ‘A’
+
+led.displayChar(65);
+```
+
 ## defineChar(*asciiCode, glyphMatrix*)
 
 You can save user-defined characters for future use using *defineChar()*. The first parameter is a numeric code to identify the character: permitted values are 0 through 31.
@@ -101,7 +106,7 @@ local smiley = [0x3C, 0x42, 0x95, 0xA1, 0xA1, 0x95, 0x42, 0x3C];
 local smileyChar = 0;
 led.defineChar(smileyChar, smiley);
 
-local displayString = "I'm being chased by a...     + smileyChar.tochar() + "    !!!";
+local displayString = "Help! I'm being chased by a...     + smileyChar.tochar() + "    ";
 led.displayLine(displayString);
 ```
 
