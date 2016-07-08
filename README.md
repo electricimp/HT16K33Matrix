@@ -2,9 +2,7 @@
 
 Hardware driver for [Adafruit 1.2-inch monochrome LED matrix display](http://www.adafruit.com/products/1854) based on the Holtek HT16K33 controller. The LED communicates over any imp I&sup2;C bus.
 
-The class incorporates its own Ascii character set, from 32 ( space ) to 127 ( &copy; )
-
-**To add this library to your project, add** `#require "HT16K33Matrix.class.nut:1.0.0"` **to the top of your device code**
+The class incorporates its own Ascii character set, from 32 ( space ) to 127 ( (c) )
 
 ## Class Usage
 
