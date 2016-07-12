@@ -432,7 +432,7 @@ class HT16K33Matrix {
             matrix.append(_flip(glyphMatrix[i]));
         }
 
-		if (_debug) server.log("Setting user-defined character " + asciiCode);
+        if (_debug) server.log("Setting user-defined character " + asciiCode);
         _defchars.insert(asciiCode, matrix);
     }
 
