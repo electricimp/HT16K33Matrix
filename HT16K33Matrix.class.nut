@@ -131,6 +131,12 @@ class HT16K33Matrix {
     _inverseVideoFlag = false;
     _debug = false;
 
+    _aStringOne = null;
+    _aStringTwo = null;
+    _aBitIndex = 0;
+    _aIndex = 0;
+    _aFlag = true;
+
     constructor(impI2Cbus = null, i2cAddress = 0x70, debug = false) {
 
         // Parameters:
@@ -548,74 +554,77 @@ class HT16K33Matrix {
 
     function _animateFrame() {
 
-        imp.wakeup(1.0, _animateFrame.bindenv(this));
-
         this._buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
-        local wString;
+        local workString;
+        local index = 0;
+        local bitIndex = this._aBitIndex;
+        local charIndex = this._aIndex;
+        local glyph;
+
         if (this._aFlag) {
-            wString = this._aStringOne;
+            workString = this._aStringOne;
         } else {
-            wString = this._aStringTwo;
+            workString = this._aStringTwo;
         }
 
         this._aFlag = !this._aFlag;
 
-        local index = 0;
-        local x = this._aBitIndex;
-        local y = this._aIndex;
-
         do {
 
-            local c = wString[y];
-            local g;
+            local c;
+            try {
+                c = wString[charIndex];
+            } catch(err) {
+                break;
+            }
 
             if (c < 32) {
-                if (this._defchars[character] == -1 || (typeof this._defchars[character] != "array")) {
-                    g = clone(this._pcharset[0]);
-                    g.append(0x00);
+                if (this._defchars[c] == -1 || (typeof this._defchars[c] != "array")) {
+                    glyph = clone(this._pcharset[0]);
+                    glyph.append(0x00);
                 } else {
-                    g = clone(this._defchars[c]);
+                    glyph = clone(this._defchars[c]);
                 }
             } else {
-                g = clone(this._pcharset[c - 32]);
-                g.append(0x00);
+                glyph = clone(this._pcharset[c - 32]);
+                glyph.append(0x00);
             }
 
-            for (local i = x ; i < g.len() ; ++i) {
-                this._buffer[index] = g[i];
+            for (local i = bitIndex ; i < glyph.len() ; ++i) {
+                this._buffer[index] = _flip(glyph[i]);
                 ++index;
-                if (index > 7) {
-                    break;
-                }
+                if (index > 7) break;
             }
 
-            x = 0;
-            ++y;
-            if (y > wString.len()) index = 9;
+            bitIndex = 0;
+            ++charIndex;
 
         } while (index < 8)
 
+        if (this._rotateFlag) this._buffer = _rotateMatrix(this._buffer, this._rotationAngle);
         _writeDisplay();
 
         ++this._aBitIndex;
         local c = wString[this._aIndex];
 
         if (c < 32) {
-            if (this._defchars[character] == -1 || (typeof this._defchars[character] != "array")) {
-                g = clone(this._pcharset[0]);
-                g.append(0x00);
+            if (this._defchars[c] == -1 || (typeof this._defchars[c] != "array")) {
+                glyph = clone(this._pcharset[0]);
+                glyph.append(0x00);
             } else {
-                g = clone(this._defchars[c]);
+                glyph = clone(this._defchars[c]);
             }
         } else {
-            g = clone(this._pcharset[c - 32]);
-            g.append(0x00);
+            glyph = clone(this._pcharset[c - 32]);
+            glyph.append(0x00);
         }
 
-        if (this._aBitIndex > g.len()) {
+        if (this._aBitIndex > glyph.len()) {
             this._aBitIndex = 0;
             ++this._aIndex;
         }
+
+        if (this._aIndex < wString.len() - 1) imp.wakeup(0.1, _animateFrame.bindenv(this));
     }
 }
