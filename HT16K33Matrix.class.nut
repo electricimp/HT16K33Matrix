@@ -133,8 +133,8 @@ class HT16K33Matrix {
 
     _aStringOne = null;
     _aStringTwo = null;
-    _aBitIndex = 0;
-    _aIndex = 0;
+    _aSliceIndex = 0;
+    _aCharIndex = 0;
     _aFlag = true;
 
     constructor(impI2Cbus = null, i2cAddress = 0x70, debug = false) {
@@ -543,88 +543,116 @@ class HT16K33Matrix {
         return result;
     }
 
+    // ********** EXPERIMENTAL ***********
+
     function animate(stringOne, stringTwo) {
+        // Display stringOne and stringTwo as per displayLine()
+        // but with the two strings displayed alternately to provide
+        // a basic animation feature as the two scroll
+
         _aStringOne = stringOne + " ";
         _aStringTwo = stringTwo + " ";
         _aFlag = true;
-        _aIndex = 0;
-        _aBitIndex = 0;
+        _aCharIndex = 0;
+        _aSliceIndex = 0;
         _animateFrame();
     }
 
     function _animateFrame() {
 
+        // Clear the frame
         this._buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
-        local workString;
-        local index = 0;
-        local bitIndex = this._aBitIndex;
-        local charIndex = this._aIndex;
+        local frameString;
         local glyph;
+        local index = 0;
+        local sliceIndex = this._aSliceIndex;
+        local charIndex = this._aCharIndex;
 
         if (this._aFlag) {
-            workString = this._aStringOne;
+            frameString = this._aStringOne;
         } else {
-            workString = this._aStringTwo;
+            frameString = this._aStringTwo;
         }
 
         this._aFlag = !this._aFlag;
 
         do {
-
             local c;
+
             try {
-                c = wString[charIndex];
+                c = frameString[charIndex];
             } catch(err) {
                 break;
             }
 
             if (c < 32) {
+                // Display a user-defined character
                 if (this._defchars[c] == -1 || (typeof this._defchars[c] != "array")) {
+                    // Character not defined; present a space instead
                     glyph = clone(this._pcharset[0]);
                     glyph.append(0x00);
                 } else {
                     glyph = clone(this._defchars[c]);
                 }
             } else {
+                // Display a standard Ascii character
                 glyph = clone(this._pcharset[c - 32]);
                 glyph.append(0x00);
             }
 
-            for (local i = bitIndex ; i < glyph.len() ; ++i) {
+            for (local i = sliceIndex ; i < glyph.len() ; ++i) {
+                // Display however many rows of the 8x8 matrix will be taken up
+                // by the visible rows of the lead character glyph
                 this._buffer[index] = _flip(glyph[i]);
                 ++index;
+
+                // Break if the character glyph contains more rows than there
+                // are free rows in the buffer
                 if (index > 7) break;
             }
 
-            bitIndex = 0;
+            // Start at the first row of the next character and advance
+            // the character index by one
+            sliceIndex = 0;
             ++charIndex;
 
         } while (index < 8)
 
+        // Handle any required rotation and write the buffer to the matrix
         if (this._rotateFlag) this._buffer = _rotateMatrix(this._buffer, this._rotationAngle);
         _writeDisplay();
 
-        ++this._aBitIndex;
-        local c = wString[this._aIndex];
+        // Set the next frame's initial row to one plus the current one
+        ++this._aSliceIndex;
+
+        // Load in the current glyph to see if we're at its end
+        local c = wString[this._aCharIndex];
 
         if (c < 32) {
+            // User-defined character?
             if (this._defchars[c] == -1 || (typeof this._defchars[c] != "array")) {
+                // Yes, but it's undefined so use a space
                 glyph = clone(this._pcharset[0]);
                 glyph.append(0x00);
             } else {
                 glyph = clone(this._defchars[c]);
             }
         } else {
+            // No, so use a standard Ascii character
             glyph = clone(this._pcharset[c - 32]);
             glyph.append(0x00);
         }
 
-        if (this._aBitIndex > glyph.len()) {
-            this._aBitIndex = 0;
-            ++this._aIndex;
+        // If the start row is greater than the characters length, we
+        // start the next frame with a new character from the string
+        if (this._aSliceIndex > glyph.len()) {
+            this._aSliceIndex = 0;
+            ++this._aCharIndex;
         }
 
-        if (this._aIndex < wString.len() - 1) imp.wakeup(0.1, _animateFrame.bindenv(this));
+        // If we still have sufficient characters to animate onto the matrix,
+        // set the next frame to be rendered in 0.1s' time
+        if (this._aCharIndex < wString.len() - 1) imp.wakeup(0.1, _animateFrame.bindenv(this));
     }
 }
