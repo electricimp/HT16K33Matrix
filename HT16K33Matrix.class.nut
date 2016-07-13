@@ -536,4 +536,86 @@ class HT16K33Matrix {
         if (a > 0) result = result + 0x80;
         return result;
     }
+
+    function animate(stringOne, stringTwo) {
+        _aStringOne = stringOne + " ";
+        _aStringTwo = stringTwo + " ";
+        _aFlag = true;
+        _aIndex = 0;
+        _aBitIndex = 0;
+        _animateFrame();
+    }
+
+    function _animateFrame() {
+
+        imp.wakeup(1.0, _animateFrame.bindenv(this));
+
+        this._buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+        local wString;
+        if (this._aFlag) {
+            wString = this._aStringOne;
+        } else {
+            wString = this._aStringTwo;
+        }
+
+        this._aFlag = !this._aFlag;
+
+        local index = 0;
+        local x = this._aBitIndex;
+        local y = this._aIndex;
+
+        do {
+
+            local c = wString[y];
+            local g;
+
+            if (c < 32) {
+                if (this._defchars[character] == -1 || (typeof this._defchars[character] != "array")) {
+                    g = clone(this._pcharset[0]);
+                    g.append(0x00);
+                } else {
+                    g = clone(this._defchars[c]);
+                }
+            } else {
+                g = clone(this._pcharset[c - 32]);
+                g.append(0x00);
+            }
+
+            for (local i = x ; i < g.len() ; ++i) {
+                this._buffer[index] = g[i];
+                ++index;
+                if (index > 7) {
+                    break;
+                }
+            }
+
+            x = 0;
+            ++y;
+            if (y > wString.len()) index = 9;
+
+        } while (index < 8)
+
+        _writeDisplay();
+
+        ++this._aBitIndex;
+        local c = wString[this._aIndex];
+
+        if (c < 32) {
+            if (this._defchars[character] == -1 || (typeof this._defchars[character] != "array")) {
+                g = clone(this._pcharset[0]);
+                g.append(0x00);
+            } else {
+                g = clone(this._defchars[c]);
+            }
+        } else {
+            g = clone(this._pcharset[c - 32]);
+            g.append(0x00);
+        }
+
+        if (this._aBitIndex > g.len()) {
+            this._aBitIndex = 0;
+            ++this._aIndex;
+        }
+    }
 }
