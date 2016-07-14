@@ -148,23 +148,22 @@ class HT16K33Matrix {
         //  HT16K33Matrix instance, or null on error
 
         if (impI2Cbus == null) {
-            throw "HT16K33MatrixPro requires a non-null imp I2C object";
+            server.error("HT16K33MatrixPro requires a non-null imp I2C object");
             return null;
         }
 
         _led = impI2Cbus;
         _ledAddress = i2cAddress << 1;
+        _debug = debug;
+
         _buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         _defchars = array(32, -1);
-        _debug = debug;
     }
 
     function init(brightness = 15, angle = 0) {
-
         // Parameters:
-        //  1. Display brightness, 1-15 (default: 15)
-        //  2. Display auto-rotation angle, 0 to -360 degrees (default: 0)
-        //
+        //   1. Display brightness, 1-15 (default: 15)
+        //   2. Display auto-rotation angle, 0 to -360 degrees (default: 0)
         // Returns: Nothing
 
         // Angle range can be -360 to + 360 - ignore values beyond this
@@ -194,10 +193,8 @@ class HT16K33Matrix {
     }
 
     function setBrightness(brightness = 15) {
-
         // Parameters:
-        // 1. Display brightness, 1-15 (default: 15)
-        //
+        //   1. Display brightness, 1-15 (default: 15)
         // Returns: Nothing
 
         if (brightness > 15) brightness = 15;
@@ -230,7 +227,6 @@ class HT16K33Matrix {
     }
 
     function clearDisplay() {
-
         // Parameters: None
         // Returns: Nothing
 
@@ -239,9 +235,8 @@ class HT16K33Matrix {
     }
 
     function setInverseVideo(state = true) {
-
         // Parameters:
-        //  1. Boolean: whether inverse video is set (true) or unset (false)
+        //   1. Boolean: whether inverse video is set (true) or unset (false)
         // Returns: Nothing
 
         if (typeof state != "bool") state = true;
@@ -266,10 +261,10 @@ class HT16K33Matrix {
     function displayIcon(glyphMatrix, center = false) {
         // Displays a custom character
         // Parameters:
-        //  1. Array of 1-8 8-bit values defining a pixel image
-        //     The data is passed as columns
-        //  2. Boolean indicating whether the icon should be displayed
-        //     centred on the screen
+        //   1. Array of 1-8 8-bit values defining a pixel image
+        //      The data is passed as columns
+        //   2. Boolean indicating whether the icon should be displayed
+        //      centred on the screen
         // Returns: nothing
 
         if (glyphMatrix == null || typeof glyphMatrix != "array") {
@@ -302,7 +297,7 @@ class HT16K33Matrix {
     function displayChar(asciiValue = 32, center = false) {
         // Display a single character specified by its Ascii value
         // Parameters:
-        //  1. Character Ascii code (default: 32 [space])
+        //   1. Character Ascii code (default: 32 [space])
         // Returns: nothing
 
         local inputMatrix;
@@ -334,7 +329,7 @@ class HT16K33Matrix {
     function displayLine(line) {
         // Bit-scroll through the characters in the variable ‘line’
         // Parameters:
-        //  1. String of text
+        //   1. String of text
         // Returns: nothing
 
         if (line == null || line == "") {
@@ -411,9 +406,9 @@ class HT16K33Matrix {
     function defineChar(asciiCode = 0, glyphMatrix = null) {
         // Set a user-definable char for later use
         // Parameters:
-        //  1. Character Ascii code 0-31 (default: 0)
-        //  2. Array of 1-8 8-bit values defining a pixel image
-        //     The data is passed as columns
+        //   1. Character Ascii code 0-31 (default: 0)
+        //   2. Array of 1-8 8-bit values defining a pixel image
+        //      The data is passed as columns
         // Returns: nothing
 
         if (glyphMatrix == null || typeof glyphMatrix != "array") {
@@ -559,7 +554,6 @@ class HT16K33Matrix {
     }
 
     function _animateFrame() {
-
         // Clear the frame
         this._buffer = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
