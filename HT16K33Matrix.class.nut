@@ -348,10 +348,8 @@ class HT16K33Matrix {
                 }
             } else {
                 glyph = clone(_pcharset[character - 32]);
+                glyph.append(0x00);
             }
-
-            // Add an empty spacer column to the character matrix
-            glyph.append(0x00);
 
             foreach (column, columnValue in glyph) {
                 local cursor = column;
