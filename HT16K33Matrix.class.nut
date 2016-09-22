@@ -9,7 +9,7 @@ class HT16K33Matrix {
     // Copyright 2014-2016 Electric Imp
     // Issued under the MIT license (MIT)
 
-    static VERSION = [1,1,0];
+    static VERSION = [1,2,0];
 
     // HT16K33 registers and HT16K33-specific variables
     static HT16K33_REGISTER_DISPLAY_ON  = "\x81"
@@ -180,13 +180,8 @@ class HT16K33Matrix {
             if (angle >= 225) angle = 3
         }
 
-        if (angle != 0) {
-            _rotateFlag = true;
-        } else {
-            _rotateFlag = false;
-        }
-
         _rotationAngle = angle;
+        if (_rotationAngle != 0) _rotateFlag = true;
 
         // Set the brightness (which also wipes and power-cycles the display)
         setBrightness(brightness);
@@ -290,7 +285,6 @@ class HT16K33Matrix {
             }
         }
 
-        if (_rotateFlag) _buffer = _rotateMatrix(_buffer, _rotationAngle);
         _writeDisplay();
     }
 
@@ -322,7 +316,6 @@ class HT16K33Matrix {
             }
         }
 
-        if (_rotateFlag) _buffer = _rotateMatrix(_buffer, _rotationAngle);
         _writeDisplay();
     }
 
@@ -395,7 +388,6 @@ class HT16K33Matrix {
                     imp.sleep(0.045);
                 }
 
-                if (_rotateFlag) _buffer = _rotateMatrix(_buffer, _rotationAngle);
                 _writeDisplay();
             }
         }
@@ -435,6 +427,56 @@ class HT16K33Matrix {
         _defchars.insert(asciiCode, matrix);
     }
 
+    function plot(x, y, ink = 1, xor = false) {
+        // Plot a point on the matrix. (0,0) is bottom left as viewed
+        // Parameters:
+        //   1. Integer X co-ordinate (0 - 7)
+        //   2. Integer Y co-ordinate (0 - 7)
+        //   3. Integer Ink color: 1 = white, 0 = black (NOTE inverse video mode reverses this)
+        //   4. Boolean indicating whether a pixel already color ink should be inverted
+        // Returns:
+        //   Nothing
+
+        if (x < 0 || x > 7) {
+            server.error("HT16K33Matrix.plot() X co-ordinate out of range (0-7)");
+            return;
+        }
+
+        if (y < 0 || y > 7) {
+            server.error("HT16K33Matrix.plot() Y co-ordinate out of range (0-7)");
+            return;
+        }
+
+        if (ink != 1 && ink != 0) ink = 1;
+        if (_inverseVideoFlag) ink = ((ink == 1) ? 0 : 1);
+
+        local row = _buffer[x];
+        if (ink == 1) {
+            // We want to set the pixel
+            local bit = row & (1 << (7 - y));
+            if (bit > 0 && xor) {
+                // Pixel is already set, but flip is true so clear the pixel
+                row = row & (0xFF - (1 << (7 - y)));
+            } else {
+                // Pixel is clear so set it
+                row = row | (1 << (7 - y));
+            }
+        } else {
+            // We want to clear the pixel
+            local bit = row & (1 << (7 - y));
+            if (bit == 0 && xor) {
+                // Pixel is already clear, but flip is true so invert the pixel
+                row = row | (1 << (7 - y));
+            } else {
+                // Pixel is set so clear it
+                row = row & (0xFF - (1 << (7 - y)));
+            }
+        }
+
+        _buffer[x] = row;
+        _writeDisplay();
+    }
+
     // ****** PRIVATE FUNCTIONS - DO NOT CALL ******
 
     function _writeDisplay() {
@@ -442,9 +484,11 @@ class HT16K33Matrix {
         // Uses function processByte() to manipulate regular values to
         // Adafruit 8x8 matrix's format
         local dataString = HT16K33_DISPLAY_ADDRESS;
+        local writedata = clone(_buffer);
+        if (_rotationAngle != 0) writedata = _rotateMatrix(writedata, _rotationAngle);
 
         for (local i = 0 ; i < 8 ; ++i) {
-            dataString = dataString + (_processByte(_buffer[i])).tochar() + "\x00";
+            dataString = dataString + (_processByte(writedata[i])).tochar() + "\x00";
         }
 
         _led.write(_ledAddress, dataString);
