@@ -474,6 +474,10 @@ class HT16K33Matrix {
         }
 
         _buffer[x] = row;
+        return this;
+    }
+
+    function draw() {
         _writeDisplay();
     }
 

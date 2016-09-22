@@ -1,6 +1,12 @@
-# HT16K33Matrix 1.1.0
+# HT16K33Matrix 1.2.0
 
 Hardware driver for [Adafruit 1.2-inch monochrome LED matrix display](http://www.adafruit.com/products/1854) based on the Holtek HT16K33 controller. The LED communicates over any imp I&sup2;C bus.
+
+### Changes from 1.1.0
+
+- Add *plot()* method.
+- Add *draw()* method.
+- Moved handling of matrix rotation from each method to the final output method.
 
 ### Changes from 1.0.0
 
@@ -109,6 +115,34 @@ led.defineChar(smileyChar, smiley);
 local displayString = "Help! I'm being chased by a...     + smileyChar.tochar() + "    ";
 led.displayLine(displayString);
 ```
+
+## plot(*x, y, color[, xor]*)
+
+This method sets the pixel at co-ordinates (x,y) to the specified *color*: 1 (lit) or 0 (dark). If the matrix is in inverse-video mode *(see below)* these color values are automatically inverted.
+
+A call to *plot()* does not update the display immediately, allowing multiple calls to be made before the buffered image is rendered on the display. To do this, call *draw()*. *plot()* returns *this*, allowing multiple calls to be chained
+
+The co-ordinate axis (0,0) is the bottom left of the display.
+
+The optional parameter *xor* is a Boolean value. The default is `false`, but if *xor* is set to `true`, the method will flip the color of the specified pixel if the pixel is already at the requested colour. For example, if the pixel at (1,1) is 1, setting it to 1 will have no effect unless *xor* is `true`, in which case the pixel becomes 0.
+
+```
+// Draw a border around the matrix edge
+for (local x = 0 ; x < 8 ; ++x) {
+if (x == 0 || x == 7) {
+    for (local y = 0 ; y < 8 ; ++ y) {
+        led.plot(x, y, 1);
+    }
+} else {
+    led.plot(x, 0, 1).plot(x, 7, 1);
+}
+
+led.draw();
+```
+
+## draw()
+
+This method causes the contents of the display’s buffer to be rendered on the display. See *plot()* for more information.
 
 ## clearDisplay()
 
