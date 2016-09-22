@@ -2,6 +2,8 @@
 
 Hardware driver for [Adafruit 1.2-inch monochrome LED matrix display](http://www.adafruit.com/products/1854) based on the Holtek HT16K33 controller. The LED communicates over any imp I&sup2;C bus.
 
+**To include this library, add** `#require "HT16K33Matrix.class.nut:1.2.0"` **to the top of your device code**
+
 ### Changes from 1.1.0
 
 - Add *plot()* method.
@@ -25,12 +27,16 @@ The passed imp I&sup2;C bus must be configured **before** the HT16K33Matrix obje
 Optionally, you can pass `true` into the *debug* parameter. This will cause debugging information to be posted to the device log. This is disabled by default.
 
 ```squirrel
+#require "HT16K33Matrix.class.nut:1.2.0"
+
 // No debugging
 hardware.i2c89.configure(CLOCK_SPEED_400_KHZ);
 led <- HT16K33Matrix(hardware.i2c89);
 ```
 
 ```squirrel
+#require "HT16K33Matrix.class.nut:1.2.0"
+
 // Debugging
 hardware.i2c89.configure(CLOCK_SPEED_400_KHZ);
 led <- HT16K33Matrix(hardware.i2c89, 0x70, true);
@@ -130,7 +136,7 @@ The optional parameter *xor* is a Boolean value. The default is `false`, but if 
 // Draw a border around the matrix edge
 for (local x = 0 ; x < 8 ; ++x) {
 if (x == 0 || x == 7) {
-    for (local y = 0 ; y < 8 ; ++ y) {
+    for (local y = 0 ; y < 8 ; ++y) {
         led.plot(x, y, 1);
     }
 } else {
