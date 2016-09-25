@@ -292,6 +292,7 @@ class HT16K33Matrix {
         // Display a single character specified by its Ascii value
         // Parameters:
         //   1. Character Ascii code (default: 32 [space])
+        //   2. Boolean indicating whether to center the character (true) or left-align (false) (default: false)
         // Returns: nothing
 
         local inputMatrix;
