@@ -433,7 +433,7 @@ class HT16K33Matrix {
         // Parameters:
         //   1. Integer X co-ordinate (0 - 7)
         //   2. Integer Y co-ordinate (0 - 7)
-        //   3. Integer Ink color: 1 = white, 0 = black (NOTE inverse video mode reverses this)
+        //   3. Integer ink color: 1 = white, 0 = black (NOTE inverse video mode reverses this)
         //   4. Boolean indicating whether a pixel already color ink should be inverted
         // Returns:
         //   Nothing
@@ -456,7 +456,7 @@ class HT16K33Matrix {
             // We want to set the pixel
             local bit = row & (1 << (7 - y));
             if (bit > 0 && xor) {
-                // Pixel is already set, but flip is true so clear the pixel
+                // Pixel is already set, but xor is true so clear the pixel
                 row = row & (0xFF - (1 << (7 - y)));
             } else {
                 // Pixel is clear so set it
@@ -466,7 +466,7 @@ class HT16K33Matrix {
             // We want to clear the pixel
             local bit = row & (1 << (7 - y));
             if (bit == 0 && xor) {
-                // Pixel is already clear, but flip is true so invert the pixel
+                // Pixel is already clear, but xor is true so invert the pixel
                 row = row | (1 << (7 - y));
             } else {
                 // Pixel is set so clear it
